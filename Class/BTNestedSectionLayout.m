@@ -25,23 +25,26 @@ const NSInteger BTLayoutHierarchyDefault = 0;
     rect.size.height = contentOffsetY + CGRectGetHeight(self.collectionView.bounds);
     NSArray *origionLayoutAttributes = [super layoutAttributesForElementsInRect:rect];
     
+    NSPredicate *resultPredicate = [NSPredicate predicateWithFormat:@"self.representedElementKind == %@", UICollectionElementKindSectionHeader];
+    
+    
+    
+    
+    NSArray *headerArray = [origionLayoutAttributes filteredArrayUsingPredicate:resultPredicate];
+    
     NSMutableArray *sections = @[].mutableCopy;
     __block BTNestedSectionLayoutObject *section;
-    [origionLayoutAttributes enumerateObjectsUsingBlock:^(UICollectionViewLayoutAttributes *itemAttribute, NSUInteger idx, BOOL *stop) {
-        if (itemAttribute.representedElementKind == UICollectionElementKindSectionHeader) {
-            NSInteger sectionHierarchy = [self sectionHeaderHierarchy:itemAttribute.indexPath.section];
-            [itemAttribute setHierarchy:sectionHierarchy];
-            itemAttribute.zIndex = 1024 - itemAttribute.hierarchy;
-            if (sectionHierarchy == BTLayoutHierarchyDefault) {
-                BTNestedSectionLayoutObject *nextSection = [BTNestedSectionLayoutObject new];
-                if (section) {
-                    section.nextSameLevelSection = nextSection;
-                }
-                section = nextSection;
-                [sections addObject:section];
+    [headerArray enumerateObjectsUsingBlock:^(UICollectionViewLayoutAttributes *itemAttribute, NSUInteger idx, BOOL * _Nonnull stop) {
+        itemAttribute.zIndex = 1024 - itemAttribute.hierarchy;
+        if (itemAttribute.hierarchy == BTLayoutHierarchyDefault) {
+            BTNestedSectionLayoutObject *nextSection = [BTNestedSectionLayoutObject new];
+            if (section) {
+                section.nextSameLevelSection = nextSection;
             }
-            [section addSubSectionLayoutAttributes:itemAttribute];
+            section = nextSection;
+            [sections addObject:section];
         }
+        [section addSubSectionLayoutAttributes:itemAttribute];
     }];
     
     [sections enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
@@ -49,6 +52,14 @@ const NSInteger BTLayoutHierarchyDefault = 0;
     }];
     
     return origionLayoutAttributes;
+}
+
+- (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
+{
+    UICollectionViewLayoutAttributes *obj = [super layoutAttributesForSupplementaryViewOfKind:elementKind atIndexPath:indexPath];
+    [obj setHierarchy:[self sectionHeaderHierarchy:indexPath.section]];
+    obj.zIndex = 1024 - obj.hierarchy;
+    return obj;
 }
 
 #pragma mark - Protocol
